@@ -12,13 +12,16 @@ export class BlogGlueTriggerStack extends cdk.Stack {
     super(scope, id, props);
 
     // Create S3 bucket
-    const bucket = new s3.Bucket(this, "MyBucket", {
-      bucketName: "my-iot-data-bucket",
-    });
+    const bucket = new s3.Bucket(this, "BlogGlueCrawlerBucket", {});
 
     // Attached to the Glue Crawler Role to crawl the S3 bucket
     const crawlerRole = new iam.Role(this, "BlogGlueCrawlerRole", {
       assumedBy: new iam.ServicePrincipal("glue.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSGlueServiceRole"
+        ),
+      ],
       inlinePolicies: {
         glueCrawlerPolicy: new iam.PolicyDocument({
           statements: [
