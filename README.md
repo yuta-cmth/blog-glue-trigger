@@ -1,6 +1,6 @@
 # Architecture
 
-[![Architecture](./architecture.drawio.png)](./architecture.png)
+[![Architecture](./blog_glue_trigger_architecture_diagram.drawio.svg)](./blog_glue_trigger_architecture_diagram.drawio.svg)
 
 # Commands to deploy & clean up
 
