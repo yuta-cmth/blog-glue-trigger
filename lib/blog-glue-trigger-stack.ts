@@ -6,13 +6,16 @@ import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as logs from "aws-cdk-lib/aws-logs";
 
 export class BlogGlueTriggerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Create S3 bucket
-    const bucket = new s3.Bucket(this, "BlogGlueCrawlerBucket", {});
+    const bucket = new s3.Bucket(this, "BlogGlueCrawlerBucket", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
     // Attached to the Glue Crawler Role to crawl the S3 bucket
     const crawlerRole = new iam.Role(this, "BlogGlueCrawlerRole", {
@@ -27,21 +30,34 @@ export class BlogGlueTriggerStack extends cdk.Stack {
           statements: [
             new iam.PolicyStatement({
               actions: ["s3:GetObject", "s3:PutObject"],
-              resources: [`${bucket.bucketArn}/*`],
+              resources: [`${bucket.bucketArn}/data/*`],
             }),
           ],
         }),
       },
     });
 
+    const databaseName = "blog_glue_db"
+    // Create Glue Database
+    new glue.CfnDatabase(this, "BlogGlueDatabase", {
+      databaseInput: {
+        name: databaseName,
+        description: "Blog Glue Database",
+      },
+      // CatalogId is the "AWS account ID for the account in which to create the catalog object".
+      // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-glue-database.html
+      catalogId: this.account,
+    });
+
     // Create Glue Crawler
     const crawler = new glue.CfnCrawler(this, "BlogGlueCrawler", {
       name: "blog-glue-trigger-crawler",
       role: crawlerRole.roleArn,
+      databaseName,
       targets: {
         s3Targets: [
           {
-            path: `s3://${bucket.bucketName}/sensor_raw_data`,
+            path: `s3://${bucket.bucketName}/data`,
           },
         ],
       },
@@ -54,9 +70,15 @@ export class BlogGlueTriggerStack extends cdk.Stack {
         detailType: ["Glue Crawler State Change"],
         detail: {
           crawlerName: [crawler.name],
-          state: ["SUCCEEDED"],
+          state: ["Succeeded"],
         },
       },
+    });
+
+
+    const logGroupForLambda = new logs.LogGroup(this, "BlogGlueCrawlerEventHandlerLogGroup", {
+      logGroupName: `/aws/lambda/blog-glue-crawler-event-handler`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // Create Lambda function
@@ -69,10 +91,23 @@ export class BlogGlueTriggerStack extends cdk.Stack {
         code: lambda.Code.fromAsset(
           "codes/lambda/blog_glue_crawler_success_handler"
         ),
-      }
+        logGroup: logGroupForLambda,
+      },
     );
 
     // Add EventBridge Rule as a target for Lambda function
     rule.addTarget(new targets.LambdaFunction(lambdaFunction));
+
+
+    // Output bucket name, crawler name
+    new cdk.CfnOutput(this, "BlogGlueCrawlerBucketName", {
+      value: bucket.bucketName,
+    });
+    new cdk.CfnOutput(this, "BlogGlueCrawlerName", {
+      value: crawler.name as string,
+    });
+    new cdk.CfnOutput(this, "BlogGlueCrawlerEventHandlerLogGroupName", {
+      value: logGroupForLambda.logGroupName,
+    });
   }
 }

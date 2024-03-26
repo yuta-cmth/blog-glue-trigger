@@ -10,4 +10,8 @@ logger.setLevel(logging.DEBUG)
 
 
 def lambda_handler(event, context):
-    print(event)
+    print('Received event!')
+    print(f'detail-type: {event["detail-type"]}')
+    print(f'time: {event["time"]}')
+    print(f'crawler name: {event["detail"]["crawlerName"]}')
+    
