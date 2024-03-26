@@ -21,6 +21,7 @@ aws logs tail --follow "${log_group_name}"
 # Clean Up
 # Emptying the bucket. Without it, cdk destroy will fail.
 aws s3 rm "s3://${bucket_name}" --recursive
+cdk destroy --force
 ```
 
 # References
