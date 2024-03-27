@@ -2,6 +2,26 @@
 
 [![Architecture](./blog_glue_trigger_architecture_diagram.drawio.svg)](./blog_glue_trigger_architecture_diagram.drawio.svg)
 
+# Set up
+
+Prerequisites
+
+-
+
+## Create environment on EC2 instance
+
+```bash
+aws
+```
+
+## Install dependencies of the project
+
+```bash
+git clone https://github.com/yuta-cmth/blog-glue-trigger.git
+cd blog-glue-trigger
+npm i
+```
+
 # Commands to deploy & clean up
 
 ```bash
@@ -14,7 +34,7 @@ crawler_name=$(aws cloudformation describe-stacks --stack-name BlogGlueTriggerSt
 log_group_name=$(aws cloudformation describe-stacks --stack-name BlogGlueTriggerStack --output text --query 'Stacks[0].Outputs[?OutputKey==`BlogGlueCrawlerEventHandlerLogGroupName`].OutputValue')
 
 # Put test data on S3, run the crawler, and tail logs.
-aws s3 sync ./s3_test_data/data "s3://${bucket_name}/data"
+aws s3 cp ./s3_test_data/data "s3://${bucket_name}/data" --recursive
 aws glue start-crawler --name "${crawler_name}"
 aws logs tail --follow "${log_group_name}"
 
